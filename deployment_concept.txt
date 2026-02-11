@@ -1,0 +1,80 @@
+Konsep  Teknis:  Pemisahan  Aplikasi  
+1.  imbalankerja.id  (Main  Domain):  Tetap  menggunakan  WordPress  +  Tema  Salient  
+untuk
+ 
+konten/marketing.
+ 2.  app.imbalankerja.id  (Subdomain):  Berisi  file  kode  aplikasi  murni  (PHP/Python/JS)  
+tanpa
+ 
+instalasi
+ 
+WordPress.
+ 
+Ini
+ 
+membuat
+ 
+aplikasi
+ 
+ringan
+ 
+dan
+ 
+tidak
+ 
+bentrok
+ 
+dengan
+ 
+plugin.
+ 3.  GitHub:  Tempat  menyimpan  source  code  (Repository).  4.  Hostinger:  Tempat  menjalankan  kode  (Server).  
+Cara  Menghubungkan  GitHub  ke  Hostinger  (Deploy)  
+Asumsi  Anda  menggunakan  Hostinger  Shared  Hosting  (hPanel),  berikut  
+langkah-langkahnya:
+ 
+1.  Siapkan  Repository  di  GitHub  
+Upload  semua  file  codingan  aplikasi  perhitungan  Anda  ke  repository  GitHub  (bisa  Private  
+atau
+ 
+Public).
+ 
+Pastikan
+ 
+ada
+ 
+file
+ index.php atau  index.html sebagai  halaman  utama.  
+2.  Buat  Subdomain  di  Hostinger  
+●  Masuk  ke  hPanel  >  Websites .  ●  Pilih  Subdomains .  ●  Buat  subdomain  baru:  app.imbalankerja.id.  ●  Note  folder  path-nya  (biasanya  public_html/app).  
+3.  Gunakan  Fitur  Git  Deployment  di  Hostinger  
+Hostinger  memiliki  fitur  bawaan  untuk  menarik  kode  dari  GitHub.  
+●  Di  hPanel,  cari  menu  Advanced  >  Git .  ●  Repository:  Masukkan  URL  repository  GitHub  Anda  (misal:  https://github.com/juwan/aplikasi-imbalan.git).  ●  Branch:  Masukkan  branch  utama  (biasanya  main atau  master).  ●  Directory:  Arahkan  ke  folder  subdomain  yang  tadi  dibuat  (kosongkan  isinya  dulu  jika  
+ada
+ 
+file
+ 
+default).
+ 
+Pastikan
+ 
+path-nya
+ 
+benar
+ 
+(misal:
+ /domains/imbalankerja.id/public_html/app).  ●  Klik  Create .  
+4.  Setup  Auto-Deployment  (Webhook)  
+Agar  tidak  perlu  klik  "Update"  manual  setiap  kali  coding:  
+●  Setelah  repositori  terbentuk  di  hPanel  Git,  Anda  akan  melihat  Webhook  URL .  Salin  
+URL
+ 
+tersebut.
+ ●  Pergi  ke  GitHub  Repository  Anda  >  Settings  >  Webhooks .  ●  Klik  Add  webhook .  
+●  Paste  URL  dari  Hostinger  tadi  ke  "Payload  URL".  ●  Setiap  kali  Anda  git  push ke  GitHub,  Hostinger  akan  otomatis  menarik  data  
+terbaru
+ 
+dan
+ 
+website
+ app.imbalankerja.id akan  terupdate.  
+ 

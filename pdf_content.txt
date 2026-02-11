@@ -1,0 +1,402 @@
+Laporan Spesifikasi Teknis dan Arsitektur Pengembangan
+Aplikasi Valuasi Aktuaria Imbalan Kerja Berbasis PSAK 219
+dengan Presisi Numerik Setara Excel
+1. Ringkasan Eksekutif
+Laporan ini menyajikan cetak biru (blueprint) komprehensif untuk pengembangan perangkat
+lunak aktuaria yang dirancang khusus untuk memenuhi standar akuntansi PSAK 219 (Imbalan
+Kerja) di Indonesia. Proyek ini bertujuan membangun aplikasi berbasis web yang tidak hanya
+memfasilitasi perhitungan kewajiban imbalan kerja sesuai regulasi terbaru (UU Cipta Kerja
+No. 6 Tahun 2023 dan PP No. 35 Tahun 2021), tetapi juga menjawab tantangan teknis utama
+dalam industri pengembangan perangkat lunak keuangan: mencapai paritas numerik
+absolut dengan Microsoft Excel.
+Berdasarkan analisis visual terhadap antarmuka "Nirmala Kantor Konsultan Aktuaria" yang
+diberikan, aplikasi ini harus berfungsi sebagai Enterprise Resource Planning (ERP) mini yang
+spesifik untuk departemen HR dan Keuangan, dengan fokus pada Manajemen Karyawan, 
+Konfigurasi Peraturan Perusahaan, dan Mesin Perhitungan Aktuaria. Kegagalan umum
+aplikasi sejenis dalam menghasilkan angka yang "sama persis" dengan Excel sering kali bukan
+disebabkan oleh kesalahan rumus aktuaria, melainkan perbedaan mendasar dalam
+penanganan floating-point arithmetic antara bahasa pemrograman modern (seperti Python,
+JavaScript, C#) dan calculation engine Excel yang berbasis standar IEEE 754 dengan logika
+pembulatan simetris yang unik.
+Laporan ini menguraikan solusi teknis untuk mengatasi perbedaan presisi tersebut, merinci
+setiap menu dan fitur yang terlihat pada desain referensi, serta menyusun algoritma
+perhitungan langkah demi langkah (step-by-step) menggunakan metode Projected Unit
+Credit (PUC). Dokumen ini ditujukan sebagai panduan teknis bagi tim pengembang
+(developer), aktuaris internal, dan manajer proyek untuk memastikan hasil akhir aplikasi
+memiliki validitas audit yang tinggi dan dapat diterima oleh auditor eksternal (KAP).
+2. Analisis Kebutuhan Fungsional Berdasarkan Visualisasi Antarmuka
+Analisis mendalam terhadap tangkapan layar (screenshot) antarmuka pengguna yang
+disediakan memberikan wawasan krusial mengenai arsitektur informasi dan alur kerja aplikasi.
+Berikut adalah dekonstruksi fitur berdasarkan bukti visual tersebut:
+2.1. Dashboard & Navigasi Utama (Side Menu)
+Berdasarkan struktur menu di sisi kiri (sidebar), aplikasi memiliki empat pilar fungsional utama:
+1. Dashboard: Pusat monitoring status valuasi.
+2. Manajemen Karyawan: Basis data sensus peserta.
+3. Peraturan Perusahaan: Mesin parameter (rule engine) untuk manfaat.
+4. Perhitungan Aktuaria: Eksekusi valuasi dan pelaporan.
+Identitas visual "Nirmala Kantor Konsultan Aktuaria" menegaskan bahwa aplikasi ini harus
+memiliki standar profesional setara konsultan, dengan kemampuan multi-tenant atau multi-
+company (terlihat dari profil "ASEP COMPANY"), yang memungkinkan satu akun mengelola
+beberapa entitas perusahaan jika diperlukan.
+2.2. Bedah Fitur Per Halaman
+A. Halaman Manajemen Karyawan (Image 1)
+Fitur ini adalah fondasi data (census data).
+Tabel Data: Kolom yang terlihat adalah "Nomor Identitas" (NIK), "Nama Karyawan",
+"Tanggal Lahir".
+Tombol "Perbarui PVBO": Ini adalah fitur unik. PVBO (Present Value of Benefit
+Obligation) biasanya adalah hasil output. Keberadaan tombol ini di menu karyawan
+mengindikasikan fitur re-calculation on the fly atau pembaruan nilai kewajiban per
+individu tanpa harus menjalankan valuasi massal satu perusahaan penuh. Ini fitur tingkat
+lanjut yang sangat berguna untuk simulasi PHK perorangan.
+Implikasi Teknis: Diperlukan database yang menampung data historis gaji dan data
+demografis yang mempengaruhi asumsi (usia, masa kerja).
+B. Halaman Peraturan Perusahaan (Image 2)
+Halaman ini adalah "otak" dari logika manfaat (benefit logic).
+Kolom "Tanggal Berlaku": Menunjukkan sistem mendukung versioning peraturan. Jika
+PP (Peraturan Perusahaan) atau PKB (Perjanjian Kerja Bersama) berubah, valuasi historis
+tetap menggunakan aturan lama.
+Kolom "Benefit Tabel": Mengacu pada tabel manfaat pasti (misal: tabel pesangon PP
+35/2021).
+Kolom "Usia Pensiun": Parameter krusial untuk menentukan Expected Retirement Date.
+Kolom "Pemberian Penghargaan": Mengacu pada UPMK (Uang Penghargaan Masa
+Kerja) atau Long Service Award (Jubilee).
+Kolom "Cuti Besar" & "UPH": Menunjukkan aplikasi ini tidak hanya menghitung Imbalan
+Pasca Kerja (Post-Employment), tetapi juga Imbalan Jangka Panjang Lainnya (Other
+Long-Term Employee Benefits) seperti Cuti Besar (Long Service Leave) sesuai PSAK 219.
+C. Halaman Perhitungan Aktuaria (Image 3)
+Daftar Valuasi: Tabel riwayat perhitungan ("List Perhitungan Aktuaria") dengan kolom
+"Jumlah Periode Valuasi", "Standar Akuntansi" (bisa pilih PSAK 219 atau SAK ETAP),
+"Format Laporan", dan "KAP yang Dipakai".
+"KAP yang Dipakai": Fitur ini sangat spesifik. Auditor (Kantor Akuntan Publik) sering
+memiliki preferensi format pengungkapan (disclosure) yang berbeda. Fitur ini
+menyarankan adanya template engine yang menyesuaikan output laporan berdasarkan
+standar KAP tertentu (misal: Big 4 vs Non-Big 4).
+Tab "Laporan Aktuaria Sebelumnya": Repositori dokumen PDF/Excel hasil valuasi masa
+lalu.
+D. Halaman Dashboard Overview (Image 4 & 5)
+Cards: "Total Perhitungan Aktuaria" dan "Perhitungan Aktuaria Berjalan".
+Insight: Memberikan visibilitas instan terhadap beban kerja sistem atau status pelaporan
+akhir tahun.
+3. Landasan Regulasi: Integrasi PP 35/2021 dan PSAK 219
+Aplikasi ini tidak boleh hanya menjadi kalkulator matematika; ia harus menjadi legal
+compliance tool. Transisi dari PSAK 24 ke PSAK 219 dan berlakunya UU Cipta Kerja mengubah
+fundamental perhitungan.
+3.1. Paradigma PSAK 219 vs PSAK 24
+Meskipun secara metode perhitungan (Projected Unit Credit) tidak berubah drastis, PSAK 219
+mempertegas perlakuan akuntansi:
+1. Remeasurements (Pengukuran Kembali): Keuntungan/kerugian aktuaria (actuarial
+gain/loss) harus masuk ke Other Comprehensive Income (OCI), bukan Laba Rugi.
+Aplikasi harus memisahkan komponen beban ini secara presisi di output Excel.
+2. Bunga Neto (Net Interest): Dihitung dengan mengalikan tingkat diskonto dengan
+liabilitas (aset) imbalan pasti neto.
+3. Pengungkapan Risiko: PSAK 219 menuntut narasi risiko (risiko umur panjang, risiko gaji,
+dll.). Aplikasi sebaiknya men-generate narasi ini secara otomatis berdasarkan data.
+3.2. Matriks Pengali Pesangon (PP 35/2021)
+Perbedaan terbesar dengan sistem lama adalah variabilitas pengali pesangon. Dalam Excel, ini
+biasanya dihandle dengan rumus IF  atau VLOOKUP  bertingkat. Aplikasi harus memiliki Logic
+Engine yang memetakan alasan terminasi ke pengali berikut :
+Alasan Terminasi
+(Decrement)
+Pengali Uang Pesangon
+(UP)
+Pengali
+UPMK
+UPH (Uang Penggantian
+Hak)
+Pensiun Normal 1.75 x 1 x 1 x
+Meninggal Dunia 2.00 x 1 x 1 x
+Sakit
+Berkepanjangan/Cacat
+2.00 x 1 x 1 x
+Efisiensi (Rugi) 0.50 x 1 x 1 x
+Efisiensi (Cegah Rugi) 1.00 x 1 x 1 x
+Pailit 0.50 x 1 x 1 x
+Force Majeure (Tutup) 0.50 x 1 x 1 x
+Force Majeure (Tidak
+Tutup)
+0.75 x 1 x 1 x
+Pengunduran Diri (Resign) 0 x 0 x 1 x + Uang Pisah*
+Pelanggaran Berat 0.50 x 1 x 1 x
+Catatan: Uang Pisah nominalnya ditentukan perusahaan, aplikasi harus menyediakan field
+input untuk ini.
+4. Spesifikasi Teknis: Mencapai Presisi "Sama Persis" dengan Excel
+Permintaan utama Anda adalah output yang "sama persis" dengan Excel. Ini adalah tantangan
+rekayasa perangkat lunak yang serius karena perbedaan cara komputer menangani bilangan
+desimal.
+4.1. Akar Masalah: Floating Point vs. Decimal
+Excel menggunakan standar IEEE 754 double-precision floating-point. Namun, Excel
+memiliki perilaku unik yang disebut "anti-monik" dan logika pembulatan yang kadang
+menyembunyikan ketidakakuratan di balik layar (misalnya, angka 1.000000000000001
+mungkin ditampilkan dan diperlakukan sebagai 1 tepat). Sebaliknya, bahasa pemrograman
+seperti Python (float ) atau JavaScript (number ) akan memproses digit di belakang koma
+secara mentah, seringkali menghasilkan selisih mikro (misal: Rp 10.500,00 di Excel vs Rp
+10.499,99999999 di aplikasi).
+4.2. Strategi Solusi Teknis
+Untuk menjamin kesamaan angka hingga digit terakhir (presisi 15 digit), aplikasi tidak boleh
+menggunakan tipe data float  standar.
+1. Pustaka Matematika Presisi Tinggi (Arbitrary-precision arithmetic):
+Jika backend menggunakan Python, WAJIB menggunakan modul decimal .
+Jika menggunakan JavaScript/Node.js, WAJIB menggunakan library decimal.js , 
+bignumber.js , atau big.js .
+Mengapa? Tipe data ini menyimpan angka sebagai desimal basis-10 yang eksak,
+bukan biner aproksimasi.
+2. Emulasi Algoritma Pembulatan (Rounding Mode):
+Excel menggunakan Symmetric Arithmetic Rounding (membulatkan 0.5 menjauhi
+nol, misal 2.5 jadi 3, -2.5 jadi -3).
+Python (versi 3) menggunakan Banker's Rounding (membulatkan 0.5 ke angka
+genap terdekat, misal 2.5 jadi 2). Ini sumber beda angka terbesar.
+Solusi: Anda harus membuat fungsi pembulatan kustom (custom_round ) di aplikasi
+yang meniru logika Excel ROUND(number, num_digits)  secara identik.
+Contoh Implementasi Python untuk "Excel Round":
+3. Sinkronisasi Langkah Kalkulasi:
+Di Excel, aktuaris sering melakukan pembulatan di tengah perhitungan (misal: 
+ROUND(Gaji * Faktor, 2) ). Aplikasi harus mengetahui di langkah mana saja Excel
+melakukan pembulatan dan mereplikasinya secara tepat. Jika Excel membiarkan
+desimal mengalir tanpa ROUND , aplikasi harus menggunakan presisi setidaknya 28
+digit desimal di memori sebelum output final.
+5. Arsitektur Modul dan Fitur Aplikasi
+Berikut adalah detail kerangka aplikasi yang harus dibangun, menerjemahkan menu pada
+gambar menjadi spesifikasi teknis.
+5.1. Modul Manajemen Karyawan (Census Data Management)
+Fitur ini mengelola input data. Kualitas output aktuaria sangat bergantung pada kualitas data
+input (Garbage In, Garbage Out).
+Menu:Manajemen Karyawan
+Fitur Detail:
+1. Import/Export Excel Template: Menyediakan template .xlsx  yang terkunci
+formatnya untuk mencegah user salah input tipe data.
+2. Validasi Data Otomatis:
+Cek NIK ganda.
+Cek Tanggal Lahir (tidak boleh di masa depan atau membuat usia < 17 tahun).
+Cek Gaji (Warning jika di bawah UMP).
+Cek Tanggal Masuk (Masa kerja tidak boleh negatif).
+3. Kategorisasi Status: Kolom untuk membedakan "Karyawan Tetap" (PKWTT) dan
+"Kontrak" (PKWT), karena PKWT tidak berhak atas pesangon UU Cipta Kerja tapi
+berhak atas "Uang Kompensasi".
+4. Riwayat Gaji: Menyimpan salary history untuk analisis kenaikan gaji (salary
+increment assumption).
+5.2. Modul Asumsi Aktuaria (Assumption Setting)
+Modul ini adalah parameter input untuk rumus matematika.
+Menu: Sub-menu di bawah Perhitungan Aktuaria  atau Konfigurasi .
+Fitur Detail:
+1. Tabel Mortalita (Mortality Table): Aplikasi harus pre-loaded dengan Tabel
+Mortalita Indonesia IV (TMI-IV) 2019. User juga bisa upload tabel custom.
+Struktur Data: Umur (x), qx (Pria), qx (Wanita).
+2. Tingkat Diskonto (Discount Rate): Input yield curve SBN (Surat Berharga Negara)
+atau input single rate (misal 6.5%).
+3. Tingkat Kenaikan Gaji (Salary Increment): Bisa single rate atau tabel berdasarkan
+usia/golongan.
+4. Tabel Pengunduran Diri (Turnover Rate): Input persentase turnover per rentang
+usia.
+Contoh: Usia 20-30: 10%, Usia 30-40: 5%, dst.
+5. Usia Pensiun Normal: Default 55, 56, 57, atau 58 tahun (dapat disesuaikan per
+individu atau global).
+6. Metode Interpolasi: Pilihan metode interpolasi peluang (Uniform Distribution of
+Deaths atau Geometric) untuk pecahan tahun usia. Untuk menyamai Excel
+sederhana, biasanya menggunakan interpolasi linear.
+5.3. Modul Peraturan Perusahaan (Benefit Rules Engine)
+Sesuai Gambar 2, modul ini mengatur "janji" perusahaan.
+Menu:Peraturan Perusahaan
+Fitur Detail:
+1. Mapping Pasal PHK: User bisa memilih apakah perusahaan mengikuti standar PP
+35/2021 murni atau memiliki tabel pesangon sendiri yang lebih tinggi (generous).
+2. Komponen Upah: Definisi "Upah" untuk pesangon. Apakah Gaji Pokok saja atau Gaji
+Pokok + Tunjangan Tetap. (Default: Gapok + Tunjangan Tetap sesuai regulasi).
+3. Konfigurasi Uang Pisah & Penghargaan Lain: Input rumus kustom untuk uang
+pisah (misal: nominal tetap atau pengali gaji).
+5.4. Modul Mesin Perhitungan (The Actuarial Engine)
+Ini adalah "jantung" aplikasi. Logika di sini harus ditulis dengan library Decimal.
+Menu:Proses Valuasi  (Tombol Action)
+Algoritma Inti (Projected Unit Credit Method):
+Aplikasi akan melakukan looping untuk setiap karyawan:
+1. Proyeksi Usia & Masa Kerja: Proyeksikan status karyawan dari Tanggal Valuasi
+(ValDate) sampai Usia Pensiun.
+2. Proyeksi Gaji: Hitung gaji di masa depan ( ) menggunakan asumsi kenaikan gaji.
+Catatan Excel: Pastikan pembulatan dilakukan di sini jika file Excel referensi
+melakukannya.
+3. Hitung Manfaat (Benefit) per Skenario: Untuk setiap tahun , hitung manfaat jika
+karyawan keluar karena: Meninggal, Cacat, Resign, Pensiun.
+Gunakan matriks pengali PP 35/2021.
+4. Hitung Peluang (Probability): Ambil nilai  (kematian),  (resign),  (cacat) dari
+tabel asumsi. Hitung peluang bertahan ( ).
+5. Diskonting (PV): Tarik nilai masa depan ke masa kini menggunakan Discount Factor
+( ).
+6. Sum Product: .
+7. Prorata (Attribution): Bagi hasil PV dengan (Masa Kerja Saat Ini / Masa Kerja Total)
+untuk mendapatkan DBO (Defined Benefit Obligation).
+5.5. Modul Pelaporan (Reporting)
+Output yang dihasilkan harus sesuai format PSAK 219.
+Menu:Lihat Detail  pada List Perhitungan (Image 5).
+Fitur Detail:
+1. Laporan Posisi Keuangan (Neraca): Menampilkan PVDBO Akhir.
+2. Laporan Laba Rugi (P&L): Menampilkan Beban Jasa Kini (CSC) dan Bunga Neto.
+3. Laporan OCI: Menampilkan Keuntungan/Kerugian Aktuaria (Gain/Loss) akibat
+perubahan asumsi demografis, finansial, dan pengalaman (experience).
+4. Laporan Perorangan: Rincian perhitungan per karyawan (untuk audit trail).
+5. Ekspor Excel: Tombol "Download.xls" yang menghasilkan file dengan rumus yang
+masih aktif (jika memungkinkan) atau hardcoded values dengan presisi penuh.
+6. Detail Rumus Perhitungan (Sesuai Regulasi & Excel Parity)
+Untuk memastikan angka "sama persis", gunakan urutan operasi berikut dalam kode program
+Anda. Asumsikan kita menghitung Kewajiban Imbalan Pasti (PVDBO) untuk satu karyawan.
+Variabel Input:
+: Tanggal Lahir
+: Tanggal Masuk
+: Tanggal Valuasi
+: Usia Pensiun (misal 56)
+: Gaji Dasar PSAK (Gapok + Tunjangan Tetap)
+: Tingkat Diskonto (misal 7%)
+: Tingkat Kenaikan Gaji (misal 5%)
+: Tabel Mortalita (qx)
+Langkah 1: Hitung Usia dan Masa Kerja (Presisi Tanggal)
+Excel biasanya menggunakan fungsi YEARFRAC  atau pengurangan tanggal dibagi 365.
+Usia (x) = (ValDate - DOB) / 365  (Gunakan basis hari yang sama dengan Excel
+user, biasanya 365 atau 360).
+Masa Kerja (y) = (ValDate - DOJ) / 365 .
+Penting: Jangan bulatkan desimal usia kecuali Excel melakukannya.
+Langkah 2: Iterasi Tahun ke Depan (Looping)
+Lakukan loop dari  sampai .
+Setiap  mewakili satu tahun ke depan.
+Langkah 3: Hitung Proyeksi Gaji ( )
+Tips Excel: Gunakan fungsi excel_round(Sal_t, 0)  jika kebijakan perusahaan membulatkan
+gaji ke rupiah terdekat.
+Langkah 4: Hitung Manfaat Pensiun ( ) di tahun 
+Sesuai PP 35/2021 Pasal 56:
+Pesangon: 1.75 x Tabel Pasal 40(2).
+UPMK: 1 x Tabel Pasal 40(3).
+UPH: 1 x Tabel Pasal 40(4) (Biasanya diasumsikan 15% dari total, atau dihitung riil cuti). 
+User Anda mungkin menggunakan asumsi 15% UPH lama atau metode baru. Berikan opsi
+config.
+Rumus Tabel Pesangon (Logika IF  bertingkat):
+Masa kerja < 1 thn = 1 bulan gaji
+1 <= MK < 2 = 2 bulan gaji
+...dst sampai max 9 bulan.
+Langkah 5: Hitung Diskon Faktor ( )
+Gunakan tipe data Decimal  dengan presisi minimal 20 digit untuk operasi pemangkatan ini.
+Langkah 6: Hitung Probabilitas Bertahan Hidup & Keluar ( )
+Ini bagian tersulit untuk disamakan dengan Excel.
+Survival Rate ( ): Peluang hidup dari usia  sampai .
+Decrement Rate ( ): Peluang kejadian (misal meninggal) di tahun itu.
+Pastikan tabel mortalita (qx) di database sama persis desimalnya dengan di Excel (TMI IV
+biasanya 5-6 desimal).
+Langkah 7: Kalkulasi PVDBO (Present Value)
+Komponen terakhir ( ) adalah Atribusi Manfaat sesuai metode PUC.
+7. Rekomendasi Teknologi (Tech Stack)
+Untuk memenuhi kebutuhan performa dan presisi:
+Backend: Python (Django/FastAPI) atau Node.js.
+Alasan: Python memiliki library pandas  dan numpy  yang sangat kuat untuk
+pengolahan data tabel seperti Excel, serta modul decimal  untuk presisi keuangan.
+Database: PostgreSQL.
+Alasan: Tipe data NUMERIC  atau DECIMAL  di PostgreSQL bersifat eksak (bukan
+floating point), sangat cocok untuk menyimpan nilai uang triliunan rupiah hingga sen
+terkecil.
+Frontend: React.js atau Vue.js (seperti yang terlihat modern di gambar "Nirmala").
+Excel Engine: Gunakan library seperti openpyxl  (Python) atau SheetJS  (JS) untuk
+membaca/menulis file Excel secara native, memastikan user bisa validasi angka dengan
+familiar.
+8. Strategi Validasi (Quality Assurance)
+Agar Anda yakin 100% hasilnya sama dengan Excel:
+1. Golden Master Testing: Minta file Excel perhitungan manual dari user yang dianggap
+"Benar".
+2. Unit Test Per Formula: Buat script tes yang membandingkan hasil rumus bunga, rumus
+masa kerja, dan rumus diskon satu per satu dengan sel Excel tersebut.
+3. Parallel Run: Jalankan aplikasi dan Excel dengan data input yang sama (misal 100
+karyawan). Bandingkan total liabilitas. Selisih yang ditoleransi harus Rp 0,-.
+4. Fitur "Traceability": Di aplikasi, buat fitur "Download Calculation Trace". Ini akan
+menghasilkan file Excel yang berisi rincian hitungan per karyawan per tahun proyeksi.
+User bisa menjejerkan file ini dengan file manual mereka untuk melihat di tahun ke berapa
+selisih muncul.
+9. Kesimpulan
+Membangun aplikasi aktuaria imbalan kerja PSAK 219 yang presisi seperti Excel bukanlah
+tentang menulis rumus matematika yang rumit, melainkan tentang disiplin penanganan tipe
+data. Dengan mengadopsi standar PP 35/2021 sebagai rule base, menggunakan library 
+Decimal untuk aritmatika, menerapkan algoritma pembulatan simetris, dan menyediakan
+fitur Manajemen Karyawan serta Peraturan Perusahaan yang fleksibel seperti pada desain
+antarmuka Nirmala, aplikasi ini akan menjadi alat valuasi yang andal, akurat, dan patuh
+regulasi.
+Kunci keberhasilan proyek ini adalah pada tahap Konfigurasi Awal: memastikan semua
+parameter asumsi dan logika pembulatan di-set agar mimic (meniru) perilaku file Excel yang
+biasa digunakan oleh aktuaris perusahaan tersebut.
+Referensi Utama dalam Pengembangan:
+ Transisi PSAK 24 ke PSAK 219.
+ Metode Projected Unit Credit.
+ Tabel Pengali Pesangon PP 35/2021.
+ Logika Pembulatan Excel vs Python.
+ Tabel Mortalita Indonesia IV.
+expand_more
+expand_more
+content_copy
+expand_more
+expand_more
+expand_more
+from decimal import Decimal, ROUND_HALF_UP
+defexcel_round(number, digits=0):
+"""
+Fungsi ini mereplikasi =ROUND() di Excel.
+"""
+context = Decimal(number)
+returnfloat(context.quantize(Decimal("1." + "0" * digits),
+rounding=ROUND_HALF_UP))
+expand_more
+Sal 
+t
+Sal =t Sal ×0 (1+IncRate)t
+t
+q 
+x w 
+x d 
+x
+p 
+x
+vt
+v =t
+ 
+(1+i)t
+1
+Σ(Benefit×Peluang×Diskon)
+DOB
+DOJ
+ValDate
+RA
+Sal
+i
+s
+TMI(x)
+t=0 (RA−Usia)
+t
+Sal 
+t
+Sal =t Sal×(1+s)t
+Ben  
+Pens t
+Total_Manfaat =t (Faktor_Pesangon×1.75+Faktor_UPMK)×Sal +t UPH
+DF 
+t
+DF =t
+ 
+(1+i)t
+1
+Prob 
+t
+ p 
+t x x x+t
+ p =t x
+ (1−
+k=0
+∏
+t−1
+q  −x+k w  −x+k d  )x+k
+q  
+x+t
+PVDBO=  (Total_Manfaat ×
+t
+∑ t Prob ×t DF )×t Masa_Kerja_Saat_Pensiu
+Masa_Kerja_Sekarang
+ 
+Masa_Kerja_Saat_Pensiun
+Masa_Kerja_Sekarang
+expand_more
+expand_more
+expand_more
+expand_more
+expand_more
+Ekspor ke Spreadsheet
+Python content_copy

@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  company   String // Company Name
+  logo      String? // Base64 or URL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees        Employee[]
+  companyRules     CompanyRule[]
+  actuarialResults ActuarialResult[]
+}
+
+model Employee {
+  id        Int      @id @default(autoincrement())
+  nik       String
+  name      String
+  dob       DateTime
+  doj       DateTime
+  salary    Decimal
+  status    String
+  gp        Decimal?
+  tunjangan Decimal?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([nik, userId]) // NIK unique per company, not globally
+}
+
+model CompanyRule {
+  id                Int     @id @default(autoincrement())
+  retirementAge     Int     @default(55)
+  pensionMultiplier Decimal @default(1.75)
+  disabilityMult    Decimal @default(2.0)
+  deathMult         Decimal @default(2.0)
+  resignMult        Decimal @default(0.0)
+
+  userId Int  @unique // One set of rules per user
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActuarialResult {
+  id           Int      @id @default(autoincrement())
+  calcDate     DateTime @default(now())
+  employeeId   Int // Conceptual link, or relation if needed
+  pvdbo        Decimal
+  serviceCost  Decimal
+  interestCost Decimal
+
+  discountRate Decimal
+  salaryInc    Decimal
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
