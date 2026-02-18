@@ -1,9 +1,11 @@
 import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import prisma from "@/lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+    ...authConfig,
     providers: [
         Credentials({
             credentials: {
@@ -36,28 +38,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     id: String(user.id),
                     email: user.email,
                     name: user.company,
-                    // Don't return image here to save cookie size
                 };
             },
         }),
     ],
-    pages: {
-        signIn: "/login",
-    },
-    callbacks: {
-        jwt: async ({ token, user }) => {
-            if (user) {
-                token.id = user.id;
-            }
-            return token;
-        },
-        session: async ({ session, token }) => {
-            if (session.user && token.id) {
-                session.user.id = token.id as string;
-                // Point to the API route that serves the image
-                session.user.image = `/api/user/logo`;
-            }
-            return session;
-        },
-    },
 });
