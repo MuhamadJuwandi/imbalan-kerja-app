@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ message: "User created successfully" }, { status: 201 });
-    } catch (error) {
-        return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    } catch (error: any) {
+        console.error("Registration error:", error);
+        return NextResponse.json({ error: error.message || "Something went wrong" }, { status: 500 });
     }
 }
