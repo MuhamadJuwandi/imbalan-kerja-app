@@ -15,7 +15,8 @@ model User {
   email     String   @unique
   password  String
   company   String // Company Name
-  logo      String?  @db.LongText // Base64 or URL
+  logo      String? // Base64 or URL
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
